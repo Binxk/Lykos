@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lykos</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: #fff;
+    color: #000;
+    font-family: Menlo, monospace;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    min-height: 0;
+  }
+  pre#screen {
+    font-family: Menlo, monospace;
+    line-height: 1.2;
+    white-space: pre;
+    user-select: none;
+  }
+  footer {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    padding: 1.25rem 0 1.5rem;
+    font-size: 13px;
+  }
+  footer a {
+    color: #000;
+    text-decoration: none;
+  }
+  footer a:hover { color: #00f; }
+</style>
+</head>
+<body>
+<main>
+  <pre id="screen" aria-label="ASCII animation of puppies running with the word Lykos typing in"></pre>
+</main>
+<footer>
+  <a href="about.html">about</a>
+  <a href="#">contact</a>
+</footer>
+<script src="lykos_frames.js"></script>
+<script>
+  const screen = document.getElementById("screen");
+  const { cols, rows, interval, frames } = window.LYKOS;
+
+  function fit() {
+    const box = screen.parentElement.getBoundingClientRect();
+    const w = box.width - 64, h = box.height - 64;
+    const fs = Math.min(w / (cols * 0.602), h / (rows * 1.2), 10);
+    screen.style.fontSize = fs + "px";
+  }
+  window.addEventListener("resize", fit);
+  fit();
+
+  let i = 0;
+  setInterval(() => {
+    screen.textContent = frames[i];
+    i = (i + 1) % frames.length;
+  }, interval);
+</script>
+</body>
+</html>

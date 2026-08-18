@@ -12,6 +12,15 @@
         ],
         "createdAt": "2026-08-18T03:41:06.890Z",
         "reason": "User confirmed the all-Menlo single-font design is intentional (matches the ASCII animation)"
+      },
+      {
+        "rule": "single-font",
+        "value": "*",
+        "files": [
+          "development.html"
+        ],
+        "createdAt": "2026-08-18T03:43:42.435Z",
+        "reason": "Same user-confirmed all-Menlo design as the rest of the site"
       }
     ]
   }

@@ -24,9 +24,18 @@
   main {
     flex: 1;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 1.5rem;
     padding: 2rem;
+    min-height: 0;
+  }
+  pre#sprout {
+    font-family: Menlo, monospace;
+    line-height: 1.2;
+    white-space: pre;
+    user-select: none;
   }
   footer {
     display: flex;
@@ -51,6 +60,7 @@
   <a href="index.html">Lykos.</a>
 </header>
 <main>
+  <pre id="sprout" aria-label="ASCII animation of a dog tilting its head"></pre>
   <p>in development</p>
 </main>
 <footer>
@@ -58,5 +68,25 @@
   <a href="#" id="contact">contact</a>
 </footer>
 <script src="contact.js"></script>
+<script src="sprout_frames.js"></script>
+<script>
+  const el = document.getElementById("sprout");
+  const { cols, rows, interval, frames } = window.SPROUT;
+
+  function fit() {
+    const box = el.parentElement.getBoundingClientRect();
+    const w = box.width - 64, h = box.height - 120;
+    const fs = Math.min(w / (cols * 0.602), h / (rows * 1.2), 8);
+    el.style.fontSize = fs + "px";
+  }
+  window.addEventListener("resize", fit);
+  fit();
+
+  let i = 0;
+  setInterval(() => {
+    el.textContent = frames[i];
+    i = (i + 1) % frames.length;
+  }, interval);
+</script>
 </body>
 </html>

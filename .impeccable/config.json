@@ -1,0 +1,18 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "single-font",
+        "value": "*",
+        "files": [
+          "about.html",
+          "index.html"
+        ],
+        "createdAt": "2026-08-18T03:41:06.890Z",
+        "reason": "User confirmed the all-Menlo single-font design is intentional (matches the ASCII animation)"
+      }
+    ]
+  }
+}

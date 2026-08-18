@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lykos — in development</title>
+<title>Lykos — hmmmm</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -60,8 +60,8 @@
   <a href="index.html">Lykos.</a>
 </header>
 <main>
-  <pre id="sprout" aria-label="ASCII animation of a dog tilting its head"></pre>
-  <p>in development</p>
+  <pre id="sprout" aria-label="Dot-art animation of a dog tilting its head"></pre>
+  <p>hmmmm...</p>
 </main>
 <footer>
   <a href="about.html">about</a>
@@ -74,10 +74,12 @@
   const { cols, rows, interval, frames } = window.SPROUT;
 
   function fit() {
+    el.textContent = frames[0];
+    el.style.fontSize = "10px";
+    const r = el.getBoundingClientRect();
     const box = el.parentElement.getBoundingClientRect();
-    const w = box.width - 64, h = box.height - 120;
-    const fs = Math.min(w / (cols * 0.602), h / (rows * 1.2), 8);
-    el.style.fontSize = fs + "px";
+    const scale = Math.min((box.width - 64) / r.width, (box.height - 140) / r.height, 1);
+    el.style.fontSize = (10 * scale).toFixed(2) + "px";
   }
   window.addEventListener("resize", fit);
   fit();

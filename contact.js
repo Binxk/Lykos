@@ -1,33 +1,78 @@
 (function () {
-  const link = document.getElementById("contact");
+  var serviceUrl = "https://lykos-contact.lyk05.workers.dev";
+  var link = document.getElementById("contact");
   if (!link) return;
-  const addr = [104, 51, 108, 108, 48, 64, 108, 121, 107, 48, 53, 46, 99, 111, 109]
-    .map(function (c) { return String.fromCharCode(c); }).join("");
+
+  function questionText(challenge) {
+    return challenge.a + " + " + challenge.b + " = ";
+  }
+
   link.addEventListener("click", function (e) {
     e.preventDefault();
     if (link.dataset.state) return;
     link.dataset.state = "asking";
-    const a = 2 + Math.floor(Math.random() * 8);
-    const b = 2 + Math.floor(Math.random() * 8);
-    const wrap = document.createElement("span");
-    wrap.appendChild(document.createTextNode(a + " + " + b + " = "));
-    const input = document.createElement("input");
-    input.setAttribute("aria-label", "prove you are human: " + a + " plus " + b);
-    input.maxLength = 2;
-    wrap.appendChild(input);
-    link.replaceWith(wrap);
-    input.focus();
-    input.addEventListener("keydown", function (ev) {
-      if (ev.key !== "Enter") return;
-      if (parseInt(input.value, 10) === a + b) {
-        const m = document.createElement("a");
-        m.href = "mailto:" + addr;
-        m.textContent = addr;
-        wrap.replaceWith(m);
-      } else {
-        input.value = "";
-        input.placeholder = "no";
-      }
-    });
+
+    fetch(serviceUrl + "/challenge")
+      .then(function (res) { return res.json(); })
+      .then(function (challenge) {
+        var wrap = document.createElement("span");
+        var question = document.createTextNode(questionText(challenge));
+        wrap.appendChild(question);
+        var input = document.createElement("input");
+        input.setAttribute(
+          "aria-label",
+          "prove you are human: " + challenge.a + " plus " + challenge.b
+        );
+        input.maxLength = 2;
+        wrap.appendChild(input);
+        link.replaceWith(wrap);
+        input.focus();
+
+        input.addEventListener("keydown", function (ev) {
+          if (ev.key !== "Enter") return;
+          fetch(serviceUrl + "/reveal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              a: challenge.a,
+              b: challenge.b,
+              expiry: challenge.expiry,
+              signature: challenge.signature,
+              answer: input.value
+            })
+          }).then(function (res) {
+            if (res.ok) {
+              res.json().then(function (data) {
+                var m = document.createElement("a");
+                m.href = "mailto:" + data.email;
+                m.textContent = data.email;
+                wrap.replaceWith(m);
+              });
+            } else if (res.status === 410) {
+              fetch(serviceUrl + "/challenge")
+                .then(function (r) { return r.json(); })
+                .then(function (fresh) {
+                  challenge = fresh;
+                  question.textContent = questionText(challenge);
+                  input.setAttribute(
+                    "aria-label",
+                    "prove you are human: " + challenge.a + " plus " + challenge.b
+                  );
+                  input.value = "";
+                  input.placeholder = "";
+                });
+            } else {
+              input.value = "";
+              input.placeholder = "no";
+            }
+          }).catch(function () {
+            input.value = "";
+            input.placeholder = "?";
+          });
+        });
+      })
+      .catch(function () {
+        link.dataset.state = "";
+      });
   });
 })();

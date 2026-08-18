@@ -1,0 +1,9 @@
+## 2026-08-18 14:04  (session 022491fc)
+- wrote index.js
+- wrote wrangler.toml
+- wrote ../contact.js
+- downloaded: for i in $(seq 1 30); do curl -s -m 2 http://localhost:8787/challenge -H "Origi…
+- downloaded: C='{"a":5,"b":4,"expiry":1787026104965,"signature":"6f5a208bca8ff5583b950e9294a…
+- downloaded: SIG=$(node -e 'const c=require("crypto");console.log(c.createHmac("sha256","loc…
+- summary: Built and tested Cloudflare Workers function to protect email with challenge-based verification and signature validation.
+

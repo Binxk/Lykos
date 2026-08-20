@@ -65,13 +65,16 @@
               input.value = "";
               input.placeholder = "no";
             }
-          }).catch(function () {
+          }).catch(function (err) {
+            console.error("contact: could not reach the reveal service", err);
             input.value = "";
             input.placeholder = "?";
           });
         });
       })
-      .catch(function () {
+      .catch(function (err) {
+        console.error("contact: could not reach the challenge service", err);
+        link.textContent = "contact unavailable";
         link.dataset.state = "";
       });
   });

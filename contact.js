@@ -5,14 +5,20 @@
   var link = document.getElementById("contact");
   if (!link) return;
 
+  // Cloudflare's script defines window.turnstile, then turnstile.ready fires
+  // once the widget code is actually able to render.
   function loadTurnstile() {
     return new Promise(function (resolve, reject) {
-      if (window.turnstile) return resolve(window.turnstile);
+      function ready() {
+        if (!window.turnstile) return reject(new Error("turnstile missing"));
+        window.turnstile.ready(function () { resolve(window.turnstile); });
+      }
+      if (window.turnstile) return ready();
       var script = document.createElement("script");
       script.src = turnstileScript;
       script.async = true;
-      script.onload = function () { resolve(window.turnstile); };
-      script.onerror = reject;
+      script.onload = ready;
+      script.onerror = function () { reject(new Error("script blocked")); };
       document.head.appendChild(script);
     });
   }
@@ -24,10 +30,10 @@
     target.replaceWith(mail);
   }
 
-  function fail(target, message, err) {
-    console.error("contact: " + message, err);
+  function fail(target, code, err) {
+    console.error("contact failed [" + code + "]", err);
     var note = document.createElement("span");
-    note.textContent = "contact unavailable";
+    note.textContent = "contact unavailable [" + code + "]";
     target.replaceWith(note);
   }
 
@@ -36,20 +42,26 @@
     if (link.dataset.state) return;
     link.dataset.state = "asking";
 
-    var widget = document.createElement("span");
+    var widget = document.createElement("div");
     widget.className = "turnstile";
     link.replaceWith(widget);
 
-    Promise.all([
-      loadTurnstile(),
-      fetch(serviceUrl + "/config").then(function (res) { return res.json(); }),
-    ])
-      .then(function (results) {
-        var turnstile = results[0];
-        var sitekey = results[1].sitekey;
-
+    var turnstile;
+    loadTurnstile()
+      .catch(function (err) {
+        throw new Error("load:" + err.message);
+      })
+      .then(function (api) {
+        turnstile = api;
+        return fetch(serviceUrl + "/config").then(function (res) {
+          if (!res.ok) throw new Error("config:" + res.status);
+          return res.json();
+        });
+      })
+      .then(function (config) {
+        if (!config.sitekey) throw new Error("config:no-sitekey");
         turnstile.render(widget, {
-          sitekey: sitekey,
+          sitekey: config.sitekey,
           callback: function (token) {
             fetch(serviceUrl + "/reveal", {
               method: "POST",
@@ -57,21 +69,20 @@
               body: JSON.stringify({ token: token }),
             })
               .then(function (res) {
-                if (!res.ok) throw new Error("reveal returned " + res.status);
+                if (!res.ok) throw new Error("reveal:" + res.status);
                 return res.json();
               })
               .then(function (data) { showEmail(widget, data.email); })
-              .catch(function (err) {
-                fail(widget, "could not reveal the address", err);
-              });
+              .catch(function (err) { fail(widget, err.message, err); });
           },
-          "error-callback": function () {
-            fail(widget, "the human check failed");
+          "error-callback": function (code) {
+            fail(widget, "widget:" + code);
+            return true;
           },
         });
       })
       .catch(function (err) {
-        fail(widget, "could not start the human check", err);
+        fail(widget, err.message, err);
       });
   });
 })();

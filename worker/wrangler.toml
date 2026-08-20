@@ -3,5 +3,6 @@ main = "index.js"
 compatibility_date = "2026-08-18"
 
 # Secrets (set with `npx wrangler secret put <NAME>`, never stored here):
-#   CONTACT_EMAIL            the address the worker reveals
-#   CHALLENGE_SIGNING_SECRET random string used to sign challenges
+#   CONTACT_EMAIL          the address the worker reveals
+#   TURNSTILE_SECRET_KEY   the secret key of the Cloudflare Turnstile widget
+#   TURNSTILE_SITE_KEY     the public site key of that same widget

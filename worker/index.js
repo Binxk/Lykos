@@ -2,13 +2,13 @@
 // The email address lives only in the CONTACT_EMAIL deployment secret,
 // so it never appears in the site's source or this repository.
 //
-// GET  /challenge -> { a, b, expiry, signature } (signature is a
-//   hash-based message authentication code over "a.b.expiry")
-// POST /reveal    -> { email } when the signature checks out, the
-//   challenge has not expired, and the answer equals a + b
+// GET  /config -> { sitekey } the public Turnstile site key
+// POST /reveal -> { email } once Cloudflare Turnstile confirms the
+//   visitor is human
 
 const allowedOrigins = ["https://lyk05.com", "https://www.lyk05.com"];
-const challengeLifetimeMs = 5 * 60 * 1000;
+const verifyUrl =
+  "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 function corsHeaders(request) {
   const origin = request.headers.get("Origin");
@@ -30,20 +30,6 @@ function json(body, status, headers) {
   });
 }
 
-async function signingKey(env, usage) {
-  return crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(env.CHALLENGE_SIGNING_SECRET),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    [usage]
-  );
-}
-
-function payloadBytes(a, b, expiry) {
-  return new TextEncoder().encode(a + "." + b + "." + expiry);
-}
-
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -53,22 +39,8 @@ export default {
       return new Response(null, { status: 204, headers });
     }
 
-    if (request.method === "GET" && url.pathname === "/challenge") {
-      const randoms = new Uint8Array(2);
-      crypto.getRandomValues(randoms);
-      const a = 2 + (randoms[0] % 8);
-      const b = 2 + (randoms[1] % 8);
-      const expiry = Date.now() + challengeLifetimeMs;
-      const key = await signingKey(env, "sign");
-      const signatureBuffer = await crypto.subtle.sign(
-        "HMAC",
-        key,
-        payloadBytes(a, b, expiry)
-      );
-      const signature = [...new Uint8Array(signatureBuffer)]
-        .map((byte) => byte.toString(16).padStart(2, "0"))
-        .join("");
-      return json({ a, b, expiry, signature }, 200, headers);
+    if (request.method === "GET" && url.pathname === "/config") {
+      return json({ sitekey: env.TURNSTILE_SITE_KEY }, 200, headers);
     }
 
     if (request.method === "POST" && url.pathname === "/reveal") {
@@ -78,30 +50,26 @@ export default {
       } catch {
         return json({ error: "bad request" }, 400, headers);
       }
-      const { a, b, expiry, signature, answer } = body || {};
-      if (
-        !Number.isInteger(a) ||
-        !Number.isInteger(b) ||
-        !Number.isInteger(expiry) ||
-        typeof signature !== "string"
-      ) {
+      const token = body && body.token;
+      if (typeof token !== "string" || !token) {
         return json({ error: "bad request" }, 400, headers);
       }
-      const signatureBytes = new Uint8Array(
-        (signature.match(/.{2}/g) || []).map((pair) => parseInt(pair, 16))
-      );
-      const key = await signingKey(env, "verify");
-      const valid = await crypto.subtle.verify(
-        "HMAC",
-        key,
-        signatureBytes,
-        payloadBytes(a, b, expiry)
-      );
-      if (!valid) return json({ error: "bad signature" }, 400, headers);
-      if (Date.now() > expiry) return json({ error: "expired" }, 410, headers);
-      if (parseInt(answer, 10) !== a + b) {
-        return json({ error: "wrong" }, 403, headers);
+
+      const form = new FormData();
+      form.append("secret", env.TURNSTILE_SECRET_KEY);
+      form.append("response", token);
+      const ip = request.headers.get("CF-Connecting-IP");
+      if (ip) form.append("remoteip", ip);
+
+      const verification = await fetch(verifyUrl, {
+        method: "POST",
+        body: form,
+      }).then((res) => res.json());
+
+      if (!verification.success) {
+        return json({ error: "not verified" }, 403, headers);
       }
+
       return json({ email: env.CONTACT_EMAIL }, 200, headers);
     }
 

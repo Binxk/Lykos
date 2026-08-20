@@ -1,10 +1,34 @@
 (function () {
   var serviceUrl = "https://lykos-contact.lyk05.workers.dev";
+  var turnstileScript =
+    "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
   var link = document.getElementById("contact");
   if (!link) return;
 
-  function questionText(challenge) {
-    return challenge.a + " + " + challenge.b + " = ";
+  function loadTurnstile() {
+    return new Promise(function (resolve, reject) {
+      if (window.turnstile) return resolve(window.turnstile);
+      var script = document.createElement("script");
+      script.src = turnstileScript;
+      script.async = true;
+      script.onload = function () { resolve(window.turnstile); };
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+
+  function showEmail(target, address) {
+    var mail = document.createElement("a");
+    mail.href = "mailto:" + address;
+    mail.textContent = address;
+    target.replaceWith(mail);
+  }
+
+  function fail(target, message, err) {
+    console.error("contact: " + message, err);
+    var note = document.createElement("span");
+    note.textContent = "contact unavailable";
+    target.replaceWith(note);
   }
 
   link.addEventListener("click", function (e) {
@@ -12,70 +36,42 @@
     if (link.dataset.state) return;
     link.dataset.state = "asking";
 
-    fetch(serviceUrl + "/challenge")
-      .then(function (res) { return res.json(); })
-      .then(function (challenge) {
-        var wrap = document.createElement("span");
-        var question = document.createTextNode(questionText(challenge));
-        wrap.appendChild(question);
-        var input = document.createElement("input");
-        input.setAttribute(
-          "aria-label",
-          "prove you are human: " + challenge.a + " plus " + challenge.b
-        );
-        input.maxLength = 2;
-        wrap.appendChild(input);
-        link.replaceWith(wrap);
-        input.focus();
+    var widget = document.createElement("span");
+    widget.className = "turnstile";
+    link.replaceWith(widget);
 
-        input.addEventListener("keydown", function (ev) {
-          if (ev.key !== "Enter") return;
-          fetch(serviceUrl + "/reveal", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              a: challenge.a,
-              b: challenge.b,
-              expiry: challenge.expiry,
-              signature: challenge.signature,
-              answer: input.value
+    Promise.all([
+      loadTurnstile(),
+      fetch(serviceUrl + "/config").then(function (res) { return res.json(); }),
+    ])
+      .then(function (results) {
+        var turnstile = results[0];
+        var sitekey = results[1].sitekey;
+
+        turnstile.render(widget, {
+          sitekey: sitekey,
+          callback: function (token) {
+            fetch(serviceUrl + "/reveal", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ token: token }),
             })
-          }).then(function (res) {
-            if (res.ok) {
-              res.json().then(function (data) {
-                var m = document.createElement("a");
-                m.href = "mailto:" + data.email;
-                m.textContent = data.email;
-                wrap.replaceWith(m);
+              .then(function (res) {
+                if (!res.ok) throw new Error("reveal returned " + res.status);
+                return res.json();
+              })
+              .then(function (data) { showEmail(widget, data.email); })
+              .catch(function (err) {
+                fail(widget, "could not reveal the address", err);
               });
-            } else if (res.status === 410) {
-              fetch(serviceUrl + "/challenge")
-                .then(function (r) { return r.json(); })
-                .then(function (fresh) {
-                  challenge = fresh;
-                  question.textContent = questionText(challenge);
-                  input.setAttribute(
-                    "aria-label",
-                    "prove you are human: " + challenge.a + " plus " + challenge.b
-                  );
-                  input.value = "";
-                  input.placeholder = "";
-                });
-            } else {
-              input.value = "";
-              input.placeholder = "no";
-            }
-          }).catch(function (err) {
-            console.error("contact: could not reach the reveal service", err);
-            input.value = "";
-            input.placeholder = "?";
-          });
+          },
+          "error-callback": function () {
+            fail(widget, "the human check failed");
+          },
         });
       })
       .catch(function (err) {
-        console.error("contact: could not reach the challenge service", err);
-        link.textContent = "contact unavailable";
-        link.dataset.state = "";
+        fail(widget, "could not start the human check", err);
       });
   });
 })();

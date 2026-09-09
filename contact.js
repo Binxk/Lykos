@@ -78,8 +78,14 @@
               body: JSON.stringify({ token: token }),
             })
               .then(function (res) {
-                if (!res.ok) throw new Error("reveal:" + res.status);
-                return res.json();
+                if (res.ok) return res.json();
+                return res.json().catch(function () { return {}; })
+                  .then(function (body) {
+                    var why = body.codes && body.codes.length
+                      ? body.codes.join(",")
+                      : res.status;
+                    throw new Error("reveal:" + why);
+                  });
               })
               .then(function (data) { showEmail(widget, data.email); })
               .catch(function (err) { fail(widget, err.message, err); });

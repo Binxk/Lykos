@@ -67,7 +67,13 @@ export default {
       }).then((res) => res.json());
 
       if (!verification.success) {
-        return json({ error: "not verified" }, 403, headers);
+        // Turnstile's error codes name the cause (bad secret, expired or
+        // reused token) and contain nothing sensitive, so pass them along.
+        return json(
+          { error: "not verified", codes: verification["error-codes"] || [] },
+          403,
+          headers
+        );
       }
 
       return json({ email: env.CONTACT_EMAIL }, 200, headers);

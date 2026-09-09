@@ -5,20 +5,29 @@
   var link = document.getElementById("contact");
   if (!link) return;
 
-  // Cloudflare's script defines window.turnstile, then turnstile.ready fires
-  // once the widget code is actually able to render.
+  // Cloudflare's script calls the global named in its onload parameter once
+  // the widget code can render. That path is used instead of
+  // turnstile.ready(), which throws when the script tag was added with async
+  // and would leave the click hanging with no visible error.
   function loadTurnstile() {
     return new Promise(function (resolve, reject) {
-      function ready() {
+      if (window.turnstile) return resolve(window.turnstile);
+      var timer = setTimeout(function () {
+        reject(new Error("timeout"));
+      }, 15000);
+      window.lykosTurnstileLoaded = function () {
+        clearTimeout(timer);
+        delete window.lykosTurnstileLoaded;
         if (!window.turnstile) return reject(new Error("turnstile missing"));
-        window.turnstile.ready(function () { resolve(window.turnstile); });
-      }
-      if (window.turnstile) return ready();
+        resolve(window.turnstile);
+      };
       var script = document.createElement("script");
-      script.src = turnstileScript;
+      script.src = turnstileScript + "&onload=lykosTurnstileLoaded";
       script.async = true;
-      script.onload = ready;
-      script.onerror = function () { reject(new Error("script blocked")); };
+      script.onerror = function () {
+        clearTimeout(timer);
+        reject(new Error("script blocked"));
+      };
       document.head.appendChild(script);
     });
   }

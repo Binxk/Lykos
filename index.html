@@ -37,6 +37,12 @@
 <main>
   <pre id="screen" aria-label="ASCII animation of puppies running with the word Lykos typing in"></pre>
 </main>
+<script>
+  // Show the bare domain even when the page was reached as /index.html.
+  if (/\/index\.html$/.test(location.pathname)) {
+    history.replaceState(null, "", location.pathname.replace(/index\.html$/, "") + location.search + location.hash);
+  }
+</script>
 <script src="lykos_frames.js"></script>
 <script>
   const screen = document.getElementById("screen");

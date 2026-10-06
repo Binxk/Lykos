@@ -2,3 +2,9 @@
 .DS_Store
 .https_watch.log
 Lykos_progress.txt
+# Kept locally, removed from the published site for now
+about.html
+development.html
+contact.js
+sprout_frames.js
+worker/

@@ -17,7 +17,6 @@
     overflow: hidden;
     cursor: crosshair;
   }
-  a { cursor: crosshair; }
   main {
     flex: 1;
     display: flex;
@@ -32,34 +31,12 @@
     white-space: pre;
     user-select: none;
   }
-  footer {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 3rem;
-    padding: 1.25rem 0 1.5rem;
-    font-size: 13px;
-  }
-  footer a {
-    color: #000;
-    text-decoration: none;
-  }
-  footer a:hover { color: #00f; }
-  .turnstile {
-    display: inline-block;
-    line-height: 0;
-  }
 </style>
 </head>
 <body>
 <main>
   <pre id="screen" aria-label="ASCII animation of puppies running with the word Lykos typing in"></pre>
 </main>
-<footer>
-  <a href="about.html">about</a>
-  <a href="#" id="contact">contact</a>
-</footer>
-<script src="contact.js"></script>
 <script src="lykos_frames.js"></script>
 <script>
   const screen = document.getElementById("screen");
